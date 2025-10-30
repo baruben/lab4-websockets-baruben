@@ -8,6 +8,7 @@ import jakarta.websocket.ContainerProvider
 import jakarta.websocket.OnMessage
 import jakarta.websocket.Session
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
@@ -36,7 +37,6 @@ class ElizaServerTest {
         assertEquals("The doctor is in.", list[0])
     }
 
-    @Disabled // Remove this line when you implement onChat
     @Test
     fun onChat() {
         logger.info { "Test thread" }
@@ -48,9 +48,24 @@ class ElizaServerTest {
         latch.await()
         val size = list.size
         // 1. EXPLAIN WHY size = list.size IS NECESSARY
+        // Because the WebSocket communication is asynchronous, capturing list.size at this point
+        // ensures we work with a stable snapshot of received messages after latch.await() completes.
+
         // 2. REPLACE BY assertXXX expression that checks an interval; assertEquals must not be used;
         // 3. EXPLAIN WHY assertEquals CANNOT BE USED AND WHY WE SHOULD CHECK THE INTERVAL
+        // The number of messages can vary depending on timing or server behavior, so we check
+        // that the message count falls within an acceptable range instead of asserting exact equality.
+        assertTrue(size in 3..6, "Expected between 3 and 6 messages but got $size")
+
         // 4. COMPLETE assertEquals(XXX, list[XXX])
+        // The first message should always be the greeting.
+        assertEquals("The doctor is in.", list[0])
+
+        // Verify that the server responded in a DOCTOR-like way about feeling sad.
+        assertTrue(
+            list.any { it.contains("sad", ignoreCase = true) && it.contains("?") },
+            "Expected a DOCTOR-style response mentioning feeling sad"
+        )
     }
 }
 
@@ -73,7 +88,6 @@ class ComplexClient(
     private val latch: CountDownLatch,
 ) {
     @OnMessage
-    @Suppress("UNUSED_PARAMETER") // Remove this line when you implement onMessage
     fun onMessage(
         message: String,
         session: Session,
@@ -84,6 +98,10 @@ class ComplexClient(
         // 5. COMPLETE if (expression) {
         // 6. COMPLETE   sentence
         // }
+        // When the greeting arrives, send the user's message to the server.
+        if (message.contains("doctor", ignoreCase = true)) {
+            session.asyncRemote.sendText("I am feeling sad")
+        }
     }
 }
 
