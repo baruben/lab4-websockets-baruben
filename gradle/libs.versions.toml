@@ -4,6 +4,7 @@ springBoot = "3.5.3"
 ktlint = "13.1.0"
 springmockk = "4.0.2"
 kotlin-logging = "7.0.0"
+jjwt = "0.12.6"
 
 [plugins]
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin"}
@@ -17,3 +18,6 @@ spring-boot-starter-websocket = { module = "org.springframework.boot:spring-boot
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 ninjasquad-springmocck = { module = "com.ninja-squad:springmockk", version.ref = "springmockk" }
 kotlin-logging = { module = "io.github.oshai:kotlin-logging", version.ref = "kotlin-logging" }
+jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
+jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }

@@ -20,6 +20,10 @@ dependencies {
     implementation(platform(libs.spring.boot.bom))
     implementation(libs.spring.boot.starter.websocket)
     implementation(libs.kotlin.logging)
+    implementation(libs.jjwt.api)
+
+    runtimeOnly(libs.jjwt.impl)
+    runtimeOnly(libs.jjwt.jackson)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.ninjasquad.springmocck)
