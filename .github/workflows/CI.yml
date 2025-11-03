@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - main
+
+env:
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -51,10 +51,20 @@ class ElizaServerTest {
         // ensures we work with a stable snapshot of received messages after latch.await() completes.
 
         // 2. REPLACE BY assertXXX expression that checks an interval; assertEquals must not be used;
+        assertTrue(size in 4..5, "Expected between 4 and 5 messages but got $size")
         // 3. EXPLAIN WHY assertEquals CANNOT BE USED AND WHY WE SHOULD CHECK THE INTERVAL
-        // The number of messages can vary depending on timing or server behavior, so we check
-        // that the message count falls within an acceptable range instead of asserting exact equality.
-        assertTrue(size in 3..6, "Expected between 3 and 6 messages but got $size")
+        // WebSocket communication happens asynchronously, so the test thread and the
+        // message-receiving thread progress concurrently. The server always sends
+        // a fixed number of messages (3 on connect + 2 after the client reply = 5), but depending
+        // on timing, the last message may still be in transit when the latch releases and the
+        // assertion is checked.
+        //
+        // For that reason, we cannot rely on assertEquals(size, 5), since it would make the test flaky
+        // if a message arrives just after latch.await() returns and the assertion is checked.
+        // Instead, we assert that the number of received messages is within the expected range
+        // (4..5), which confirms that the sequence is correct while allowing for minor timing
+        // differences between threads. Alternatively, we could increase the latch countdown so
+        // it would always return after the last message arrives.
 
         // 4. COMPLETE assertEquals(XXX, list[XXX])
         // The first message should always be the greeting.
