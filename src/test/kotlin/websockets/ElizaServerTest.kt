@@ -72,7 +72,7 @@ class ElizaServerTest {
         // The fourth message should be a doctor-style reponse.
         assertTrue(
             list[3].matches(Regex(".*(sorry|How long|normal to be|enjoy being).*")) && list[3].contains("feeling sad"),
-            "Expected a doctor-style response, but got: ${list[3]}"
+            "Expected a doctor-style response, but got: ${list[3]}",
         )
     }
 }
