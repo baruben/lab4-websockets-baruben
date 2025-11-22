@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lab 4 - WebSockets</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #messages { border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: auto; margin-top: 10px; }
+        #userTypeSelection, #input { margin-top: 10px; display:none; }
+        button { margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<h2>Secure Chat Room</h2>
+
+<div id="roomSelection">
+    <input id="roomId" type="text" placeholder="Room ID" />
+    <button onclick="prepareJoin()">Join Room</button>
+</div>
+
+<div id="userTypeSelection">
+    <h4>Choose how to join:</h4>
+    <button onclick="join('anonymous')">Join as Anonymous</button>
+    <button onclick="join('user')">Join as Normal User</button>
+    <button onclick="join('admin')">Join as Admin</button>
+</div>
+
+<div id="messages"></div>
+
+<div id="input">
+    <input id="text" type="text" placeholder="Message" />
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="disconnect()" style="margin-left:10px; color:red;">Disconnect</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<script>
+    let stomp = null;
+    let destination = null;
+    let principal = { name: null, role: null, token: null };
+    let roomSubscription = null;
+
+    function prepareJoin() {
+        const room = document.getElementById("roomId").value.trim();
+        if (!room) {
+            alert("Room ID required");
+            return;
+        }
+
+        destination = "/topic/" + room;
+
+        document.getElementById("roomSelection").style.display = "none";
+        document.getElementById("userTypeSelection").style.display = "block";
+    }
+
+    async function join(role) {
+        principal.role = role;
+
+        if (role === "anonymous") {
+            principal.name = null;
+            principal.token = null;
+        } else {
+
+            const username = prompt("Enter your username:", "User");
+            if (!username) return;
+
+            principal.name = username;
+
+            const claims = (role === "admin")
+                ? { roles: ["ADMIN"] }
+                : {};
+
+            try {
+                const res = await fetch("/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, claims })
+                });
+
+                const data = await res.json();  // parse JSON
+                principal.token = data.token;   // extract the token string
+
+            } catch (err) {
+                alert("Failed to obtain token: " + err);
+                return;
+            }
+        }
+
+        document.getElementById("userTypeSelection").style.display = "none";
+        document.getElementById("input").style.display = "block";
+
+        connect();
+    }
+
+    function connect() {
+        const socket = new SockJS('/ws');
+        stomp = Stomp.over(socket);
+
+        const headers = {};
+        if (principal.token) {
+            headers["Authorization"] = "Bearer " + principal.token;
+        }
+
+        stomp.connect(headers, frame => {
+            console.log("Connected:", frame);
+
+            // ROOM messages
+            roomSubscription = stomp.subscribe(destination, msg => {
+                const body = JSON.parse(msg.body);
+                showMessage(`${body.from ?? "anon"}: ${body.text}`);
+            });
+
+            // SERVER logical errors
+            stomp.subscribe("/user/queue/errors", msg => {
+                showMessage("❌ Error: " + msg.body);
+            });
+
+            stomp.subscribe("/user/queue/command", msg => {
+                showMessage(msg.body);
+            });
+
+        }, errorFrame => {
+            // STOMP ERROR frames (from outboundChannel)
+            showMessage("❌ STOMP ERROR: " + errorFrame);
+        });
+    }
+
+    function sendMessage() {
+        const text = document.getElementById("text").value.trim();
+        if (!text) return;
+
+        const msg = principal.name
+            ? { from: principal.name, text }
+            : { text };
+
+        // Use template literal to insert room name from 'destination'
+        // Extract room name from '/topic/roomId'
+        const room = destination.replace("/topic/", "");
+
+        stomp.send(`/app/${room}/send`, {}, JSON.stringify(msg));
+
+        document.getElementById("text").value = "";
+    }
+
+    function showMessage(msg) {
+        const box = document.getElementById("messages");
+        box.innerHTML += msg + "<br>";
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function disconnect() {
+
+        // 1. Unsubscribe from room if subscribed
+        if (roomSubscription) {
+            try {
+                roomSubscription.unsubscribe();
+                console.log("Unsubscribed from room:", destination);
+            } catch (e) {
+                console.warn("Failed to unsubscribe:", e);
+            }
+            roomSubscription = null;
+        }
+
+        // 2. Disconnect STOMP
+        if (stomp !== null) {
+            stomp.disconnect(() => {
+                console.log("Disconnected");
+            });
+        }
+
+        // 3. Reset principal
+        principal = { name: null, role: null, token: null };
+
+        // 4. Reset destination
+        destination = null;
+
+        // 5. Clear messages
+        document.getElementById("messages").innerHTML = "";
+
+        // 6. Reset UI
+        document.getElementById("input").style.display = "none";
+        document.getElementById("userTypeSelection").style.display = "none";
+        document.getElementById("roomSelection").style.display = "block";
+
+        // 7. Clear room field
+        document.getElementById("roomId").value = "";
+    }
+
+</script>
+
+</body>
+</html>

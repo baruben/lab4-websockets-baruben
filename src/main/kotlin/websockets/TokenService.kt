@@ -7,11 +7,6 @@ import java.util.Base64
 import java.util.Date
 import javax.crypto.spec.SecretKeySpec
 
-data class User(
-    val username: String,
-    val claims: Map<String, Any>,
-)
-
 @Service
 class TokenService(
     @param:Value("\${jwt.secret}") private val secret: String,
@@ -44,7 +39,7 @@ class TokenService(
         return builder.compact()
     }
 
-    fun parseToken(token: String): User {
+    fun extractUsername(token: String): String {
         val payload =
             Jwts
                 .parser()
@@ -53,18 +48,26 @@ class TokenService(
                 .parseSignedClaims(token)
                 .payload
 
-        val username = payload.subject
-        val claims =
-            payload.entries
-                .associate { it.key to it.value }
-                .filter { (key, _) -> key != "sub" && key != "iat" && key != "exp" }
+        return payload.subject
+    }
 
-        return User(username, claims)
+    fun extractRoles(token: String): List<String> {
+        val claims = Jwts.parser()
+            .verifyWith(signingKey)
+            .build()
+            .parseSignedClaims(token)
+            .payload
+
+        return when (val rolesClaim = claims["roles"]) {
+            is List<*> -> rolesClaim.filterIsInstance<String>()
+            is String -> listOf(rolesClaim)
+            else -> emptyList()
+        }
     }
 
     fun isValid(token: String): Boolean =
         try {
-            parseToken(token)
+            extractUsername(token)
             true
         } catch (ex: Exception) {
             false

@@ -9,6 +9,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.messaging.simp.SimpMessagingTemplate
+import org.springframework.messaging.simp.config.ChannelRegistration
+import org.springframework.messaging.simp.config.MessageBrokerRegistry
+import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker
+import org.springframework.web.socket.config.annotation.StompEndpointRegistry
+import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer
 import org.springframework.web.socket.server.standard.ServerEndpointExporter
 
 @SpringBootApplication
@@ -19,15 +25,31 @@ fun main(args: Array<String>) {
 }
 
 @Configuration(proxyBeanMethods = false)
+@EnableWebSocketMessageBroker
 class WebSocketConfig(
     private val tokenService: TokenService,
-) {
+    private val stompErrorSender: StompErrorSender
+) : WebSocketMessageBrokerConfigurer {
+
     @Bean
     fun serverEndpoint() = ServerEndpointExporter()
 
-    @PostConstruct
-    fun init() {
-        WebSocketConfigurator.tokenService = tokenService
+    override fun configureMessageBroker(config: MessageBrokerRegistry) {
+        // destination for broadcasts: /topic/...
+        config.enableSimpleBroker("/topic", "/queue")
+
+        // prefix for sending messages from clients: /app/...
+        config.setApplicationDestinationPrefixes("/app")
+    }
+
+    override fun registerStompEndpoints(registry: StompEndpointRegistry) {
+        registry.addEndpoint("/ws")          // WebSocket endpoint
+            .setAllowedOriginPatterns("*")   // allow CORS
+            .withSockJS()                    // fallback
+    }
+
+    override fun configureClientInboundChannel(registration: ChannelRegistration) {
+        registration.interceptors(JwtChannelInterceptor(tokenService, stompErrorSender))
     }
 }
 
