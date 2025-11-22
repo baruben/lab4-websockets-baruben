@@ -3,13 +3,11 @@
 package websockets
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import jakarta.annotation.PostConstruct
 import jakarta.websocket.RemoteEndpoint
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.messaging.simp.config.ChannelRegistration
 import org.springframework.messaging.simp.config.MessageBrokerRegistry
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker
@@ -28,9 +26,8 @@ fun main(args: Array<String>) {
 @EnableWebSocketMessageBroker
 class WebSocketConfig(
     private val tokenService: TokenService,
-    private val stompErrorSender: StompErrorSender
+    private val stompErrorSender: StompErrorSender,
 ) : WebSocketMessageBrokerConfigurer {
-
     @Bean
     fun serverEndpoint() = ServerEndpointExporter()
 
@@ -43,9 +40,10 @@ class WebSocketConfig(
     }
 
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
-        registry.addEndpoint("/ws")          // WebSocket endpoint
-            .setAllowedOriginPatterns("*")   // allow CORS
-            .withSockJS()                    // fallback
+        registry
+            .addEndpoint("/ws") // WebSocket endpoint
+            .setAllowedOriginPatterns("*") // allow CORS
+            .withSockJS() // fallback
     }
 
     override fun configureClientInboundChannel(registration: ChannelRegistration) {

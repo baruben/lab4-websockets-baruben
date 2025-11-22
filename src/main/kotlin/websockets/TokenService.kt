@@ -52,11 +52,13 @@ class TokenService(
     }
 
     fun extractRoles(token: String): List<String> {
-        val claims = Jwts.parser()
-            .verifyWith(signingKey)
-            .build()
-            .parseSignedClaims(token)
-            .payload
+        val claims =
+            Jwts
+                .parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .payload
 
         return when (val rolesClaim = claims["roles"]) {
             is List<*> -> rolesClaim.filterIsInstance<String>()

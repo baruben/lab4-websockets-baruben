@@ -31,7 +31,6 @@
 <div id="input">
     <input id="text" type="text" placeholder="Message" />
     <button onclick="sendMessage()">Send</button>
-    <button onclick="disconnect()" style="margin-left:10px; color:red;">Disconnect</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
@@ -41,7 +40,6 @@
     let stomp = null;
     let destination = null;
     let principal = { name: null, role: null, token: null };
-    let roomSubscription = null;
 
     function prepareJoin() {
         const room = document.getElementById("roomId").value.trim();
@@ -108,7 +106,7 @@
             console.log("Connected:", frame);
 
             // ROOM messages
-            roomSubscription = stomp.subscribe(destination, msg => {
+            stomp.subscribe(destination, msg => {
                 const body = JSON.parse(msg.body);
                 showMessage(`${body.from ?? "anon"}: ${body.text}`);
             });
@@ -150,45 +148,6 @@
         box.innerHTML += msg + "<br>";
         box.scrollTop = box.scrollHeight;
     }
-
-    function disconnect() {
-
-        // 1. Unsubscribe from room if subscribed
-        if (roomSubscription) {
-            try {
-                roomSubscription.unsubscribe();
-                console.log("Unsubscribed from room:", destination);
-            } catch (e) {
-                console.warn("Failed to unsubscribe:", e);
-            }
-            roomSubscription = null;
-        }
-
-        // 2. Disconnect STOMP
-        if (stomp !== null) {
-            stomp.disconnect(() => {
-                console.log("Disconnected");
-            });
-        }
-
-        // 3. Reset principal
-        principal = { name: null, role: null, token: null };
-
-        // 4. Reset destination
-        destination = null;
-
-        // 5. Clear messages
-        document.getElementById("messages").innerHTML = "";
-
-        // 6. Reset UI
-        document.getElementById("input").style.display = "none";
-        document.getElementById("userTypeSelection").style.display = "none";
-        document.getElementById("roomSelection").style.display = "block";
-
-        // 7. Clear room field
-        document.getElementById("roomId").value = "";
-    }
-
 </script>
 
 </body>
